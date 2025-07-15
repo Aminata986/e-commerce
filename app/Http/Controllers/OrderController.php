@@ -1,7 +1,11 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Mail\OrderConfirmation;
+use Illuminate\Support\Facades\Mail;
 
+// ... dans la méthode store()
+Mail::to($order->user->email)->send(new OrderConfirmation($order));
 use App\Models\Order;
 use Illuminate\Http\Request;
 
@@ -57,4 +61,13 @@ class OrderController extends Controller
         $order->delete();
         return response()->json(['message' => 'Commande supprimée avec succès']);
     }
+}
+use Barryvdh\DomPDF\Facade\Pdf; // Ajoute ce use en haut du fichier
+
+public function downloadInvoice($id)
+{
+    $order = Order::with(['user', 'orderItems.product', 'payment'])->findOrFail($id);
+
+    $pdf = Pdf::loadView('pdf.invoice', compact('order'));
+    return $pdf->download('facture_commande_'.$order->id.'.pdf');
 }

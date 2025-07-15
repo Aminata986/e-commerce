@@ -1,16 +1,19 @@
 <?php
-
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemController;
 use App\Http\Controllers\PaymentController;
 
-Route::apiResource('products', ProductController::class);
-Route::apiResource('categories', CategoryController::class);
 Route::apiResource('orders', OrderController::class);
 Route::apiResource('order-items', OrderItemController::class);
 Route::apiResource('payments', PaymentController::class);
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductController;
+
+Route::get('/test', function () {
+    return response()->json(['message' => 'API test OK']);
+});
+
+Route::get('/products', [ProductController::class, 'index']);
+
+
+Route::get('orders/{id}/invoice', [OrderController::class, 'downloadInvoice']);
