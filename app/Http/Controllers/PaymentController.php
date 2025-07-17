@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use App\Models\Order;
 
 class PaymentController extends Controller
 {
@@ -52,5 +53,55 @@ class PaymentController extends Controller
         $payment = Payment::findOrFail($id);
         $payment->delete();
         return response()->json(['message' => 'Paiement supprimé avec succès']);
+    }
+
+    // Simuler un paiement en ligne
+    public function simulateOnlinePayment(Request $request, $orderId)
+    {
+        $request->validate([
+            'payment_method' => 'required|in:card,paypal',
+        ]);
+        $order = Order::findOrFail($orderId);
+        if ($order->payment_status === Order::PAYMENT_PAID) {
+            return response()->json(['error' => 'Cette commande est déjà payée'], 422);
+        }
+        // Simuler le succès du paiement
+        $order->update([
+            'payment_status' => Order::PAYMENT_PAID,
+            'payment_method' => $request->payment_method,
+        ]);
+        $payment = $order->payment()->create([
+            'amount' => $order->total,
+            'method' => $request->payment_method,
+            'status' => 'completed',
+        ]);
+        return response()->json([
+            'message' => 'Paiement simulé avec succès',
+            'order' => $order,
+            'payment' => $payment,
+        ]);
+    }
+
+    // Marquer comme payé à la livraison (admin)
+    public function markAsPaidOnDelivery($orderId)
+    {
+        $order = Order::findOrFail($orderId);
+        if ($order->payment_status === Order::PAYMENT_PAID) {
+            return response()->json(['error' => 'Cette commande est déjà payée'], 422);
+        }
+        $order->update([
+            'payment_status' => Order::PAYMENT_PAID,
+            'payment_method' => 'livraison',
+        ]);
+        $payment = $order->payment()->create([
+            'amount' => $order->total,
+            'method' => 'livraison',
+            'status' => 'completed',
+        ]);
+        return response()->json([
+            'message' => 'Paiement à la livraison enregistré',
+            'order' => $order,
+            'payment' => $payment,
+        ]);
     }
 }

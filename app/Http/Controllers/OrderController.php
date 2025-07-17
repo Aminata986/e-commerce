@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Mail;
 Mail::to($order->user->email)->send(new OrderConfirmation($order));
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class OrderController extends Controller
 {
@@ -50,6 +51,22 @@ class OrderController extends Controller
             'shipping_address' => 'required|string',
             'total' => 'required|numeric',
         ]);
+
+        // Validation stricte des statuts
+        if (!in_array($validated['status'], Order::getStatusList())) {
+            return response()->json(['error' => 'Statut de commande invalide'], 422);
+        }
+        if (!in_array($validated['payment_status'], Order::getPaymentStatusList())) {
+            return response()->json(['error' => 'Statut de paiement invalide'], 422);
+        }
+        // Empêcher de livrer si non payé
+        if ($validated['status'] === Order::STATUS_DELIVERED && $order->payment_status !== Order::PAYMENT_PAID) {
+            return response()->json(['error' => 'Impossible de marquer comme livrée si la commande n\'est pas payée'], 422);
+        }
+        // Empêcher d'expédier si non payé
+        if ($validated['status'] === Order::STATUS_SHIPPED && $order->payment_status !== Order::PAYMENT_PAID) {
+            return response()->json(['error' => 'Impossible d\'expédier si la commande n\'est pas payée'], 422);
+        }
         $order->update($validated);
         return response()->json($order);
     }
@@ -61,13 +78,12 @@ class OrderController extends Controller
         $order->delete();
         return response()->json(['message' => 'Commande supprimée avec succès']);
     }
-}
-use Barryvdh\DomPDF\Facade\Pdf; // Ajoute ce use en haut du fichier
 
-public function downloadInvoice($id)
-{
-    $order = Order::with(['user', 'orderItems.product', 'payment'])->findOrFail($id);
-
-    $pdf = Pdf::loadView('pdf.invoice', compact('order'));
-    return $pdf->download('facture_commande_'.$order->id.'.pdf');
+    // Télécharger la facture PDF
+    public function downloadInvoice($id)
+    {
+        $order = Order::with(['user', 'orderItems.product', 'payment'])->findOrFail($id);
+        $pdf = Pdf::loadView('pdf.invoice', compact('order'));
+        return $pdf->download('facture_commande_'.$order->id.'.pdf');
+    }
 }

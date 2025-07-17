@@ -7,10 +7,11 @@ use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    // Liste des catégories
+    // Liste des catégories avec nombre de produits
     public function index()
     {
-        return response()->json(Category::all());
+        $categories = Category::withCount('products')->get();
+        return response()->json($categories);
     }
 
     // Créer une catégorie
